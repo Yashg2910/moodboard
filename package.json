@@ -1,0 +1,27 @@
+{
+  "name": "vietnam-pinboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "seed:vietnam": "tsx lib/seed-vietnam.ts"
+  },
+  "dependencies": {
+    "mongoose": "^8.9.0",
+    "nanoid": "^5.0.9",
+    "next": "^14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.9",
+    "@types/react": "^18.3.14",
+    "@types/react-dom": "^18.3.5",
+    "dotenv": "^16.4.7",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

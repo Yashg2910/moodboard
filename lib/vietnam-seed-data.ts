@@ -1,0 +1,81 @@
+// The actual Vietnam honeymoon itinerary, ported from moodboard.html / pinboard.html.
+// This seeds ONE room; the app itself is generic (any room can hold any days).
+export const VIETNAM_DAYS = [
+  {
+    dayId: "d1", num: 1, date: "Mon 21 Dec", location: "Mumbai → Hanoi",
+    title: "Landing in the Old Quarter",
+    caption: "Flight in from Mumbai; check in, drop the bags, and go find dinner somewhere with no sign out front.",
+    artSeed: 0,
+    stayNote: "Hanoi La Siesta Hotel & Spa, Old Quarter, 4★ (~₹4,500/night).",
+  },
+  {
+    dayId: "d2", num: 2, date: "Tue 22 Dec", location: "Hanoi → Lan Ha Bay",
+    title: "Into the Karsts",
+    caption: "Early pickup from Hanoi, brunch happens on board once you're underway. Board the 2D1N cruise, kayak into a lagoon, dinner on deck as the light turns copper.",
+    artSeed: 1,
+    stayNote: "Aboard the cruise (cabin, night 1). Confirm the operator's package includes onboard lunch.",
+  },
+  {
+    dayId: "d3", num: 3, date: "Wed 23 Dec", location: "Lan Ha Bay → Hanoi → overnight train to Sapa",
+    title: "Back to Land, Onward by Rail",
+    caption: "Cruise wraps up and drops you back in Hanoi late morning. A 6-hour day-use hotel room to shower and stash bags, then explore before boarding the evening sleeper train up to Sapa.",
+    artSeed: 2,
+    stayNote: "Overnight train (no hotel needed). Day-use room (~₹1,250, 6hrs) doubles as your luggage base.",
+  },
+  {
+    dayId: "d4", num: 4, date: "Thu 24 Dec", location: "Sapa",
+    title: "A Slow Mountain Day",
+    caption: "Arrive in the cool morning air. Nothing scheduled — cafes with valley views, a wander through Cat Cat Village, then the night market as the town lights up.",
+    artSeed: 3,
+    stayNote: "Pao's Sapa Leisure Hotel, town-centre, 4★ (~$58/night).",
+  },
+  {
+    dayId: "d5", num: 5, date: "Fri 25 Dec", location: "Sapa → overnight train to Hanoi",
+    title: "Above the Clouds",
+    caption: "Cable car up to Fansipan's peak — Indochina's highest point — for half a day, then back down for a night train back to Hanoi.",
+    artSeed: 4,
+    stayNote: "Overnight train (no hotel needed). Dec 25 crowds can mean queues — start early.",
+  },
+  {
+    dayId: "d6", num: 6, date: "Sat 26 Dec", location: "Hanoi → Ninh Binh",
+    title: "Halong Bay on Land",
+    caption: "Back into Hanoi at dawn, then straight on to Ninh Binh — limestone karsts rising out of rice paddies, boats gliding through Trang An's caves.",
+    artSeed: 5,
+    stayNote: "Tam Coc Garden Resort, rice-paddy bungalows (~$70/night).",
+  },
+  {
+    dayId: "d7", num: 7, date: "Sun 27 Dec", location: "Ninh Binh → Hanoi → Da Nang → Ba Na Hills",
+    title: "Quiet Window #1: Dusk",
+    caption: "Back to Hanoi, then the earliest reasonable flight to Da Nang — that margin matters now. Straight up to Ba Na Hills, arriving as the day-tripper buses head back down.",
+    artSeed: 6,
+    stayNote: "Mercure Danang French Village, on-mountain (~$130/night). Confirm the last-ascent cable car time before booking the flight.",
+  },
+  {
+    dayId: "d8", num: 8, date: "Mon 28 Dec", location: "Ba Na Hills → Hoi An",
+    title: "Quiet Window #2: Dawn",
+    caption: "Up early for the Golden Bridge before the first cable cars of the day bring the crowds. Down by late morning, ahead of the peak, then on to Hoi An.",
+    artSeed: 7,
+    stayNote: "Vinpearl Resort & Golf Nam Hoi An (~$120/night). Sits ~15-20 min from the Ancient Town by shuttle.",
+  },
+  {
+    dayId: "d9", num: 9, date: "Tue 29 Dec", location: "Hoi An",
+    title: "The Day Ba Na Hills Gave Back",
+    caption: "Basket boats through the coconut palms, a bike through the rice paddies, a cooking class, An Bang beach for sunset.",
+    artSeed: 8,
+    stayNote: "Vinpearl Resort & Golf Nam Hoi An (night 2).",
+  },
+  {
+    dayId: "d10", num: 10, date: "Wed 30 Dec", location: "Hoi An → Ho Chi Minh City",
+    title: "City Lights, One Last Time",
+    caption: "Checkout from Hoi An, short flight down to Ho Chi Minh City. Evening in District 1 — rooftop bars, Bui Vien energy.",
+    artSeed: 9,
+    stayNote: "Liberty Central Saigon Citypoint, District 1, 4★ (~$72/night).",
+  },
+  {
+    dayId: "d11", num: 11, date: "Thu 31 Dec", location: "Ho Chi Minh City → Mumbai",
+    title: "New Year's Eve, Then Home",
+    caption: "A half-day city tour — Cu Chi Tunnels or Ben Thanh Market — then an evening flight home, 31 Dec, confirmed.",
+    artSeed: 10,
+    stayNote: "Flight home ~₹13,000/person, evening departure, 31 Dec (confirmed fare).",
+  },
+];
