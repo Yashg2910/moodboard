@@ -15,9 +15,11 @@ export interface LinkPreview {
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
-// Instagram's /embed/ only returns the simple thumbnail HTML to a crawler UA;
-// a browser UA gets the full JS app with no parseable image.
-const IG_UA = "Mozilla/5.0 (compatible; VietnamPinboard/1.0; link-preview bot)";
+// A crawler-style UA. Some Google/Meta endpoints behave BETTER for bots:
+// Instagram's /embed/ returns the simple thumbnail HTML (a browser UA gets the
+// full JS app), and Google Maps short links only 302 to the /place/ URL for a
+// crawler (a browser UA gets no redirect).
+const CRAWLER_UA = "Mozilla/5.0 (compatible; VietnamPinboard/1.0; link-preview bot)";
 
 export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview | null> {
   // Some platforms (YouTube) block generic bot scraping and serve a consent
@@ -58,7 +60,7 @@ async function tryInstagram(rawUrl: string): Promise<LinkPreview | null> {
   try {
     const res = await fetch(embedUrl, {
       signal: controller.signal,
-      headers: { "user-agent": IG_UA, accept: "text/html" },
+      headers: { "user-agent": CRAWLER_UA, accept: "text/html" },
     });
     if (!res.ok) return null;
     const html = (await res.text()).slice(0, 400_000);
@@ -109,11 +111,12 @@ async function tryMaps(rawUrl: string): Promise<LinkPreview | null> {
   const timer = setTimeout(() => controller.abort(), 6000);
   try {
     // Follow the short-link redirect to the expanded /maps/place/<name> URL.
+    // Must use the crawler UA — a browser UA gets no redirect from Google.
     const res = await fetch(rawUrl, {
       redirect: "follow",
       signal: controller.signal,
       headers: {
-        "user-agent": UA,
+        "user-agent": CRAWLER_UA,
         accept: "text/html,application/xhtml+xml",
       },
     });
