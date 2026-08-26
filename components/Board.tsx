@@ -135,6 +135,26 @@ export default function Board({ initialRoom }: { initialRoom: RoomData }) {
     }
   }
 
+  async function deleteDay(dayId: string) {
+    if (room.days.length <= 1) {
+      setNote({ text: "A board needs at least one day.", err: true });
+      return;
+    }
+    const prevDays = room.days;
+    // remove and renumber to match what the server does
+    const nextDays = prevDays.filter((d) => d.dayId !== dayId).map((d, i) => ({ ...d, num: i + 1 }));
+    setOpenIndex(-1); // close the overlay for the day we're removing
+    setRoom((r) => ({ ...r, days: nextDays }));
+    setNote(null);
+    try {
+      const res = await fetch(`/api/rooms/${room._id}/days/${dayId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn't delete the day.");
+    } catch (err) {
+      setRoom((r) => ({ ...r, days: prevDays }));
+      setNote({ text: err instanceof Error ? err.message : "Couldn't delete — try again.", err: true });
+    }
+  }
+
   async function updateTitle(title: string) {
     const trimmed = title.trim();
     if (!trimmed || trimmed === room.title) return;
@@ -201,6 +221,8 @@ export default function Board({ initialRoom }: { initialRoom: RoomData }) {
             onAddPin={addPin}
             onRemovePin={removePin}
             onUpdateDay={updateDay}
+            onDeleteDay={deleteDay}
+            canDelete={room.days.length > 1}
             note={note}
           />
         </div>
@@ -356,6 +378,8 @@ function DayOverlay({
   onAddPin,
   onRemovePin,
   onUpdateDay,
+  onDeleteDay,
+  canDelete,
   note,
 }: {
   day: Day;
@@ -373,6 +397,8 @@ function DayOverlay({
   ) => void;
   onRemovePin: (dayId: string, category: Category, pinId: string) => void;
   onUpdateDay: (dayId: string, patch: Partial<Day>) => void;
+  onDeleteDay: (dayId: string) => void;
+  canDelete: boolean;
   note: { text: string; err: boolean } | null;
 }) {
   return (
@@ -443,6 +469,21 @@ function DayOverlay({
           />
         ))}
         <div className={`save-note${note?.err ? " err" : ""}`}>{note?.text ?? ""}</div>
+        {canDelete && (
+          <div className="day-delete-row">
+            <button
+              type="button"
+              className="day-delete"
+              onClick={() => {
+                if (window.confirm(`Remove "${day.title}"? This can't be undone.`)) {
+                  onDeleteDay(day.dayId);
+                }
+              }}
+            >
+              Remove this day
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -22,11 +22,17 @@ export async function POST(req: NextRequest, { params }: { params: { roomId: str
   }
 
   const num = room.days.length + 1;
+  // Derive the id from the highest existing suffix so it can't collide with a
+  // day that outlived a deletion (dayIds are stable; `num` is what renumbers).
+  const maxSuffix = room.days.reduce((mx, d) => {
+    const n = parseInt(String(d.dayId).replace(/^d/, ""), 10);
+    return Number.isFinite(n) ? Math.max(mx, n) : mx;
+  }, 0);
   const emptyPins = () =>
     Object.fromEntries(CATEGORIES.map((c) => [c, []])) as Record<Category, []>;
 
   const day = {
-    dayId: `d${num}`,
+    dayId: `d${maxSuffix + 1}`,
     num,
     date: "",
     location: body?.location || "",

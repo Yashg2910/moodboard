@@ -510,6 +510,31 @@ h1 em {
   color: var(--red);
 }
 
+/* "Remove this day" — low-emphasis, sits under the pin sections */
+.day-delete-row {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+.day-delete {
+  border: 1px solid transparent;
+  background: none;
+  color: #a08a86;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+.day-delete:hover {
+  color: #fff;
+  background: var(--lacquer);
+  border-color: var(--lacquer);
+}
+
 /* live preview shown under the add-pin form while typing a link */
 .pin-live-preview {
   margin-top: 8px;

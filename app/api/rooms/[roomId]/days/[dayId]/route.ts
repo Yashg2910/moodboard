@@ -54,3 +54,33 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true });
 }
+
+// DELETE /api/rooms/:roomId/days/:dayId — remove a day, then renumber the
+// remaining days' display number so they stay sequential (dayIds are left as-is).
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { roomId: string; dayId: string } }
+) {
+  await dbConnect();
+
+  const room = await Room.findById(params.roomId);
+  if (!room) {
+    return NextResponse.json({ error: "Room not found" }, { status: 404 });
+  }
+
+  const idx = room.days.findIndex((d) => d.dayId === params.dayId);
+  if (idx === -1) {
+    return NextResponse.json({ error: "Day not found" }, { status: 404 });
+  }
+  if (room.days.length <= 1) {
+    return NextResponse.json({ error: "A board needs at least one day." }, { status: 400 });
+  }
+
+  room.days.splice(idx, 1);
+  room.days.forEach((d, i) => {
+    d.num = i + 1;
+  });
+  await room.save();
+
+  return NextResponse.json({ ok: true });
+}
