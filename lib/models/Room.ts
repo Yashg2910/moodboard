@@ -13,8 +13,9 @@ export interface LinkPreview {
 
 export interface Pin {
   id: string;
-  text: string;
+  text: string; // the title / what you found
   url: string;
+  note: string; // free-text description / notes
   source: string; // e.g. "Instagram", "YouTube", "Maps", or the bare hostname — detected at write time
   preview?: LinkPreview; // Open Graph card fetched at write time; absent if none found
   createdAt: Date;
@@ -37,6 +38,7 @@ export interface RoomDoc {
   title: string;
   createdAt: Date;
   days: Day[];
+  generalPins: Pin[]; // links not tied to any day — "across the trip"
 }
 
 const emptyPins = (): Record<Category, Pin[]> => ({
@@ -61,6 +63,7 @@ const PinSchema = new Schema<Pin>(
     id: { type: String, default: () => nanoid(10) },
     text: { type: String, required: true, trim: true, maxlength: 140 },
     url: { type: String, default: "", trim: true, maxlength: 500 },
+    note: { type: String, default: "", trim: true, maxlength: 500 },
     source: { type: String, default: "" },
     preview: { type: PreviewSchema, default: undefined },
     createdAt: { type: Date, default: () => new Date() },
@@ -96,6 +99,7 @@ const RoomSchema = new Schema<RoomDoc>({
   title: { type: String, required: true, trim: true, maxlength: 120 },
   createdAt: { type: Date, default: () => new Date() },
   days: { type: [DaySchema], default: [] },
+  generalPins: { type: [PinSchema], default: [] },
 });
 
 // `models.Room` guard avoids Mongoose's "OverwriteModelError" on hot reload in dev.

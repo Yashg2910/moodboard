@@ -32,11 +32,24 @@ export default function Board({ initialRoom }: { initialRoom: RoomData }) {
     return () => document.removeEventListener("keydown", onKeydown);
   }, [openIndex, close]);
 
+  function makeTempPin(text: string, url: string, noteText: string, preview?: LinkPreview | null): Pin {
+    return {
+      id: "temp-" + Math.random().toString(36).slice(2),
+      text: text.slice(0, 140),
+      url: url.slice(0, 500),
+      note: noteText.slice(0, 500),
+      source: url ? detectSource(url) : "",
+      ...(preview ? { preview } : {}),
+      createdAt: new Date().toISOString(),
+    };
+  }
+
   async function addPin(
     dayId: string,
     category: Category,
     text: string,
     url: string,
+    noteText: string,
     preview?: LinkPreview | null
   ) {
     const trimmedText = text.trim();
@@ -49,14 +62,7 @@ export default function Board({ initialRoom }: { initialRoom: RoomData }) {
     // optimistic pin — a real id/source lands once the server responds. If the
     // form already fetched a preview while pasting, reuse it so the card shows
     // instantly instead of flashing a skeleton.
-    const tempPin: Pin = {
-      id: "temp-" + Math.random().toString(36).slice(2),
-      text: trimmedText.slice(0, 140),
-      url: url.slice(0, 500),
-      source: url ? detectSource(url) : "",
-      ...(preview ? { preview } : {}),
-      createdAt: new Date().toISOString(),
-    };
+    const tempPin = makeTempPin(trimmedText, url, noteText.trim(), preview);
     setRoom((r) => withPin(r, dayId, category, tempPin));
     setNote(null);
 
@@ -64,7 +70,7 @@ export default function Board({ initialRoom }: { initialRoom: RoomData }) {
       const res = await fetch(`/api/rooms/${room._id}/days/${dayId}/pins`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, text: trimmedText, url }),
+        body: JSON.stringify({ category, text: trimmedText, url, note: noteText.trim() }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn't save.");
       const savedPin: Pin = await res.json();
@@ -72,6 +78,48 @@ export default function Board({ initialRoom }: { initialRoom: RoomData }) {
     } catch (err) {
       setRoom((r) => withoutPin(r, dayId, category, tempPin.id));
       setNote({ text: err instanceof Error ? err.message : "Couldn't save — try again.", err: true });
+    }
+  }
+
+  async function addGeneralPin(text: string, url: string, noteText: string, preview?: LinkPreview | null) {
+    const trimmedText = text.trim();
+    if (!trimmedText) return;
+    if (url && !isHttpUrl(url)) {
+      setNote({ text: "Link must start with http:// or https://", err: true });
+      return;
+    }
+
+    const tempPin = makeTempPin(trimmedText, url, noteText.trim(), preview);
+    setRoom((r) => ({ ...r, generalPins: [...(r.generalPins ?? []), tempPin] }));
+    setNote(null);
+
+    try {
+      const res = await fetch(`/api/rooms/${room._id}/pins`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: trimmedText, url, note: noteText.trim() }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn't save.");
+      const savedPin: Pin = await res.json();
+      setRoom((r) => ({
+        ...r,
+        generalPins: (r.generalPins ?? []).map((p) => (p.id === tempPin.id ? savedPin : p)),
+      }));
+    } catch (err) {
+      setRoom((r) => ({ ...r, generalPins: (r.generalPins ?? []).filter((p) => p.id !== tempPin.id) }));
+      setNote({ text: err instanceof Error ? err.message : "Couldn't save — try again.", err: true });
+    }
+  }
+
+  async function removeGeneralPin(pinId: string) {
+    const removed = (room.generalPins ?? []).find((p) => p.id === pinId);
+    setRoom((r) => ({ ...r, generalPins: (r.generalPins ?? []).filter((p) => p.id !== pinId) }));
+    try {
+      const res = await fetch(`/api/rooms/${room._id}/pins/${pinId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn't remove.");
+    } catch (err) {
+      if (removed) setRoom((r) => ({ ...r, generalPins: [...(r.generalPins ?? []), removed] }));
+      setNote({ text: err instanceof Error ? err.message : "Couldn't remove — try again.", err: true });
     }
   }
 
@@ -199,6 +247,12 @@ export default function Board({ initialRoom }: { initialRoom: RoomData }) {
         </button>
       </div>
       {note?.err && openIndex < 0 && <div className="board-note err">{note.text}</div>}
+
+      <GeneralPinsPanel
+        pins={room.generalPins ?? []}
+        onAddPin={addGeneralPin}
+        onRemovePin={removeGeneralPin}
+      />
 
       <footer className="page-footer">
         Share this board by copying its URL — everyone with the link can pin and remove references.
@@ -393,6 +447,7 @@ function DayOverlay({
     category: Category,
     text: string,
     url: string,
+    note: string,
     preview?: LinkPreview | null
   ) => void;
   onRemovePin: (dayId: string, category: Category, pinId: string) => void;
@@ -565,36 +620,47 @@ function LinkPreviewCard({ pin }: { pin: Pin }) {
   );
 }
 
-function PinSection({
-  day,
-  category,
-  label,
-  hint,
-  onAddPin,
-  onRemovePin,
+// One saved pin: title line (source badge + open link + remove), optional note,
+// and the rich link-preview card. Shared by day sections and the general panel.
+function PinItem({ pin, onRemove }: { pin: Pin; onRemove: () => void }) {
+  return (
+    <li className="pin-row">
+      <div className="pin-line">
+        <span className="pin-text">{pin.text}</span>
+        {pin.url && isHttpUrl(pin.url) && (
+          <>
+            {pin.source && <span className="pin-src">{pin.source}</span>}
+            <a className="pin-link" href={pin.url} target="_blank" rel="noopener noreferrer">
+              open ↗
+            </a>
+          </>
+        )}
+        <button type="button" className="pin-remove" aria-label="Remove" onClick={onRemove}>
+          ×
+        </button>
+      </div>
+      {pin.note && <div className="pin-note">{pin.note}</div>}
+      {pin.url && isHttpUrl(pin.url) && <LinkPreviewCard pin={pin} />}
+    </li>
+  );
+}
+
+// Title + link + notes inputs, with a debounced live link-preview. Calls onAdd
+// with the fetched preview so the card can show instantly on save.
+function AddPinForm({
+  onAdd,
 }: {
-  day: Day;
-  category: Category;
-  label: string;
-  hint: string;
-  onAddPin: (
-    dayId: string,
-    category: Category,
-    text: string,
-    url: string,
-    preview?: LinkPreview | null
-  ) => void;
-  onRemovePin: (dayId: string, category: Category, pinId: string) => void;
+  onAdd: (text: string, url: string, note: string, preview: LinkPreview | null) => void;
 }) {
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
+  const [noteText, setNoteText] = useState("");
   const [preview, setPreview] = useState<LinkPreview | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const reqRef = useRef(0);
-  const pins = day.pins[category];
 
-  // Fetch a preview as the link is pasted/typed (debounced), so the card shows
-  // before the pin is added. A request token guards against stale responses.
+  // Fetch a preview as the link is pasted/typed (debounced). A request token
+  // guards against stale responses landing out of order.
   useEffect(() => {
     const u = url.trim();
     if (!isHttpUrl(u)) {
@@ -622,50 +688,17 @@ function PinSection({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
-    onAddPin(day.dayId, category, text, url, isHttpUrl(url.trim()) ? preview : null);
+    onAdd(text, url, noteText, isHttpUrl(url.trim()) ? preview : null);
     setText("");
     setUrl("");
+    setNoteText("");
     setPreview(null);
     setPreviewing(false);
     reqRef.current++;
   }
 
   return (
-    <div className="pin-section">
-      <div className="pin-head">
-        <span className={`pin-label ${category}`}>{label}</span>
-        <span className="pin-hint">{hint}</span>
-      </div>
-      {pins.length > 0 ? (
-        <ul className="pin-list">
-          {pins.map((p) => (
-            <li className="pin-row" key={escapeForKey(p.id)}>
-              <div className="pin-line">
-                <span className="pin-text">{p.text}</span>
-                {p.url && isHttpUrl(p.url) && (
-                  <>
-                    {p.source && <span className="pin-src">{p.source}</span>}
-                    <a className="pin-link" href={p.url} target="_blank" rel="noopener noreferrer">
-                      open ↗
-                    </a>
-                  </>
-                )}
-                <button
-                  type="button"
-                  className="pin-remove"
-                  aria-label="Remove"
-                  onClick={() => onRemovePin(day.dayId, category, p.id)}
-                >
-                  ×
-                </button>
-              </div>
-              {p.url && isHttpUrl(p.url) && <LinkPreviewCard pin={p} />}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="pin-empty">Nothing pinned yet — add a place, a reel, or a note below.</div>
-      )}
+    <>
       <form className="pin-form" onSubmit={handleSubmit}>
         <input
           type="text"
@@ -684,6 +717,14 @@ function PinSection({
           onChange={(e) => setUrl(e.target.value)}
           maxLength={500}
         />
+        <input
+          type="text"
+          className="pin-input-note"
+          placeholder="Notes (optional) — a reminder, price, who recommended it…"
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+          maxLength={500}
+        />
         <button type="submit">Add</button>
       </form>
       {isHttpUrl(url.trim()) && (previewing || hasPreview(preview)) && (
@@ -695,6 +736,81 @@ function PinSection({
           />
         </div>
       )}
+    </>
+  );
+}
+
+function PinSection({
+  day,
+  category,
+  label,
+  hint,
+  onAddPin,
+  onRemovePin,
+}: {
+  day: Day;
+  category: Category;
+  label: string;
+  hint: string;
+  onAddPin: (
+    dayId: string,
+    category: Category,
+    text: string,
+    url: string,
+    note: string,
+    preview?: LinkPreview | null
+  ) => void;
+  onRemovePin: (dayId: string, category: Category, pinId: string) => void;
+}) {
+  const pins = day.pins[category];
+  return (
+    <div className="pin-section">
+      <div className="pin-head">
+        <span className={`pin-label ${category}`}>{label}</span>
+        <span className="pin-hint">{hint}</span>
+      </div>
+      {pins.length > 0 ? (
+        <ul className="pin-list">
+          {pins.map((p) => (
+            <PinItem key={escapeForKey(p.id)} pin={p} onRemove={() => onRemovePin(day.dayId, category, p.id)} />
+          ))}
+        </ul>
+      ) : (
+        <div className="pin-empty">Nothing pinned yet — add a place, a reel, or a note below.</div>
+      )}
+      <AddPinForm
+        onAdd={(text, url, note, preview) => onAddPin(day.dayId, category, text, url, note, preview)}
+      />
     </div>
+  );
+}
+
+// Board-level "across the trip" links, not tied to any day.
+function GeneralPinsPanel({
+  pins,
+  onAddPin,
+  onRemovePin,
+}: {
+  pins: Pin[];
+  onAddPin: (text: string, url: string, note: string, preview?: LinkPreview | null) => void;
+  onRemovePin: (pinId: string) => void;
+}) {
+  return (
+    <section className="general-panel">
+      <div className="general-head">
+        <h2>Across the trip</h2>
+        <p>Links and ideas that aren&apos;t tied to a single day — hotels, packing lists, anything.</p>
+      </div>
+      {pins.length > 0 ? (
+        <ul className="pin-list">
+          {pins.map((p) => (
+            <PinItem key={escapeForKey(p.id)} pin={p} onRemove={() => onRemovePin(p.id)} />
+          ))}
+        </ul>
+      ) : (
+        <div className="pin-empty">Nothing here yet — drop a link or note below.</div>
+      )}
+      <AddPinForm onAdd={(text, url, note, preview) => onAddPin(text, url, note, preview)} />
+    </section>
   );
 }

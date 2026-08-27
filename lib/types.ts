@@ -13,6 +13,7 @@ export interface Pin {
   id: string;
   text: string;
   url: string;
+  note: string;
   source: string;
   preview?: LinkPreview;
   createdAt: string;
@@ -35,6 +36,7 @@ export interface RoomData {
   title: string;
   createdAt: string;
   days: Day[];
+  generalPins: Pin[];
 }
 
 export const CATEGORIES: { key: Category; label: string; hint: string }[] = [
