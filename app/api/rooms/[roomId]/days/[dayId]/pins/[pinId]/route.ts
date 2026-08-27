@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import { Room, CATEGORIES, type Category } from "@/lib/models/Room";
+import { hasBoardAccess } from "@/lib/board-auth";
 
 // DELETE /api/rooms/:roomId/days/:dayId/pins/:pinId?category=eat
 export async function DELETE(
@@ -10,6 +11,9 @@ export async function DELETE(
   { params }: { params: { roomId: string; dayId: string; pinId: string } }
 ) {
   await dbConnect();
+  if (!(await hasBoardAccess(params.roomId))) {
+    return NextResponse.json({ error: "Password required" }, { status: 401 });
+  }
 
   const category = req.nextUrl.searchParams.get("category") as Category | null;
   if (!category || !CATEGORIES.includes(category)) {

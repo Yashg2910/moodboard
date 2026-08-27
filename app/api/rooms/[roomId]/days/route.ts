@@ -3,11 +3,15 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import { Room, CATEGORIES, type Category } from "@/lib/models/Room";
+import { hasBoardAccess } from "@/lib/board-auth";
 
 // POST /api/rooms/:roomId/days — append a new blank day to the board.
 // Body (all optional): { location, title, caption, stayNote }
 export async function POST(req: NextRequest, { params }: { params: { roomId: string } }) {
   await dbConnect();
+  if (!(await hasBoardAccess(params.roomId))) {
+    return NextResponse.json({ error: "Password required" }, { status: 401 });
+  }
 
   const body = (await req.json().catch(() => ({}))) as {
     location?: string;

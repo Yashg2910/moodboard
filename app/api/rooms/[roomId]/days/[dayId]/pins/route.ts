@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import { Room, CATEGORIES, type Category } from "@/lib/models/Room";
 import { buildPin } from "@/lib/build-pin";
+import { hasBoardAccess } from "@/lib/board-auth";
 
 // POST /api/rooms/:roomId/days/:dayId/pins — add a pin to one category on one day.
 // Body: { category: "eat"|"see"|"do"|"stay", text: string, url?: string, note?: string }
@@ -12,6 +13,9 @@ export async function POST(
   { params }: { params: { roomId: string; dayId: string } }
 ) {
   await dbConnect();
+  if (!(await hasBoardAccess(params.roomId))) {
+    return NextResponse.json({ error: "Password required" }, { status: 401 });
+  }
 
   const body = await req.json().catch(() => null);
   const category = body?.category as Category | undefined;

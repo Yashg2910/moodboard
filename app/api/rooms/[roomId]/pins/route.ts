@@ -4,11 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import { Room } from "@/lib/models/Room";
 import { buildPin } from "@/lib/build-pin";
+import { hasBoardAccess } from "@/lib/board-auth";
 
 // POST /api/rooms/:roomId/pins — add a general ("across the trip") link, not
 // tied to any day. Body: { text: string, url?: string, note?: string }
 export async function POST(req: NextRequest, { params }: { params: { roomId: string } }) {
   await dbConnect();
+  if (!(await hasBoardAccess(params.roomId))) {
+    return NextResponse.json({ error: "Password required" }, { status: 401 });
+  }
 
   const body = await req.json().catch(() => null);
   const built = await buildPin(body ?? {});

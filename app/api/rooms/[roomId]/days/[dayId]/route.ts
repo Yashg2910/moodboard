@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import { Room } from "@/lib/models/Room";
+import { hasBoardAccess } from "@/lib/board-auth";
 
 // Which day fields may be edited inline, and how long each may be.
 const EDITABLE: Record<string, number> = {
@@ -20,6 +21,9 @@ export async function PATCH(
   { params }: { params: { roomId: string; dayId: string } }
 ) {
   await dbConnect();
+  if (!(await hasBoardAccess(params.roomId))) {
+    return NextResponse.json({ error: "Password required" }, { status: 401 });
+  }
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body || typeof body !== "object") {
@@ -62,6 +66,9 @@ export async function DELETE(
   { params }: { params: { roomId: string; dayId: string } }
 ) {
   await dbConnect();
+  if (!(await hasBoardAccess(params.roomId))) {
+    return NextResponse.json({ error: "Password required" }, { status: 401 });
+  }
 
   const room = await Room.findById(params.roomId);
   if (!room) {

@@ -39,6 +39,7 @@ export interface RoomDoc {
   createdAt: Date;
   days: Day[];
   generalPins: Pin[]; // links not tied to any day — "across the trip"
+  passwordHash?: string; // scrypt hash; absent/empty => board is open. Never sent to the client.
 }
 
 const emptyPins = (): Record<Category, Pin[]> => ({
@@ -100,6 +101,7 @@ const RoomSchema = new Schema<RoomDoc>({
   createdAt: { type: Date, default: () => new Date() },
   days: { type: [DaySchema], default: [] },
   generalPins: { type: [PinSchema], default: [] },
+  passwordHash: { type: String, default: "" },
 });
 
 // `models.Room` guard avoids Mongoose's "OverwriteModelError" on hot reload in dev.
