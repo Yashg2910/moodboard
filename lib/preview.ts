@@ -21,6 +21,20 @@ const UA =
 // crawler (a browser UA gets no redirect).
 const CRAWLER_UA = "Mozilla/5.0 (compatible; VietnamPinboard/1.0; link-preview bot)";
 
+// Agoda serves its Open Graph tags ONLY to a crawler-style UA — a browser UA gets
+// an empty JS shell with no title/OG tags. The Facebook scraper string is the one
+// Agoda reliably answers with real tags.
+const FB_UA = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)";
+
+export function isAgodaUrl(rawUrl: string): boolean {
+  try {
+    const host = new URL(rawUrl).hostname.replace(/^www\./, "").replace(/^m\./, "");
+    return /(^|\.)agoda\.(com|net)$/.test(host);
+  } catch {
+    return false;
+  }
+}
+
 export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview | null> {
   // Some platforms (YouTube) block generic bot scraping and serve a consent
   // page instead of OG tags. Use their public oEmbed endpoint when we can.
@@ -37,7 +51,42 @@ export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview | nu
   const viaInstagram = await tryInstagram(rawUrl);
   if (viaInstagram) return viaInstagram;
 
-  return fetchOpenGraph(rawUrl);
+  // Agoda (most of our links) only serves OG tags to a crawler UA, and its
+  // /sp/ share links need resolving to the real property page first.
+  const viaAgoda = await tryAgoda(rawUrl);
+  if (viaAgoda) return viaAgoda;
+
+  return fetchOpenGraph(rawUrl, UA);
+}
+
+async function tryAgoda(rawUrl: string): Promise<LinkPreview | null> {
+  if (!isAgodaUrl(rawUrl)) return null;
+
+  let target = rawUrl;
+  // /sp/<code> is a short share link. The FB crawler UA gets bounced to a
+  // onelink 401, but a browser UA follows the redirect to the real /hotel/
+  // page — which in turn only exposes OG tags to the FB UA. So: resolve with
+  // the browser UA, then OG-fetch the resolved URL with the FB UA.
+  if (/^\/sp\//.test(new URL(rawUrl).pathname)) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    try {
+      const res = await fetch(rawUrl, {
+        redirect: "follow",
+        signal: controller.signal,
+        headers: { "user-agent": UA, accept: "text/html,application/xhtml+xml" },
+      });
+      if (res.url && isAgodaUrl(res.url) && !/^\/sp\//.test(new URL(res.url).pathname)) {
+        target = res.url;
+      }
+    } catch {
+      // fall through and try the raw url with the FB UA
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  return fetchOpenGraph(target, FB_UA);
 }
 
 async function tryInstagram(rawUrl: string): Promise<LinkPreview | null> {
@@ -201,7 +250,7 @@ async function tryOembed(rawUrl: string): Promise<LinkPreview | null> {
   }
 }
 
-async function fetchOpenGraph(rawUrl: string): Promise<LinkPreview | null> {
+async function fetchOpenGraph(rawUrl: string, ua: string = UA): Promise<LinkPreview | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 6000);
   try {
@@ -210,7 +259,7 @@ async function fetchOpenGraph(rawUrl: string): Promise<LinkPreview | null> {
       signal: controller.signal,
       headers: {
         // Identify as a preview crawler — many sites serve OG tags to bots.
-        "user-agent": UA,
+        "user-agent": ua,
         accept: "text/html,application/xhtml+xml",
       },
     });
