@@ -518,6 +518,36 @@ h1 em {
   color: var(--red);
 }
 
+/* "Move this day" — reorder control above the remove row */
+.day-move-row {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #a08a86;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+}
+.day-move-select {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 12.5px;
+  color: var(--ink, #3a2f2d);
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+.day-move-row + .day-delete-row {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: none;
+}
+
 /* "Remove this day" — low-emphasis, sits under the pin sections */
 .day-delete-row {
   margin-top: 18px;

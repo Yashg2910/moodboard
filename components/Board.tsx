@@ -203,6 +203,36 @@ export default function Board({ initialRoom }: { initialRoom: RoomData }) {
     }
   }
 
+  async function moveDay(dayId: string, toNum: number) {
+    const prevDays = room.days;
+    const from = prevDays.findIndex((d) => d.dayId === dayId);
+    if (from === -1) return;
+    const to = Math.min(Math.max(toNum - 1, 0), prevDays.length - 1);
+    if (to === from) return;
+
+    // Reorder + renumber locally to mirror the server, then keep the overlay
+    // pointed at the day that just moved so it follows it to its new slot.
+    const reordered = [...prevDays];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    const nextDays = reordered.map((d, i) => ({ ...d, num: i + 1 }));
+    setRoom((r) => ({ ...r, days: nextDays }));
+    if (openIndex === from) setOpenIndex(to);
+    setNote(null);
+    try {
+      const res = await fetch(`/api/rooms/${room._id}/days/reorder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dayId, toNum: to + 1 }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn't move the day.");
+    } catch (err) {
+      setRoom((r) => ({ ...r, days: prevDays }));
+      if (openIndex === from) setOpenIndex(from);
+      setNote({ text: err instanceof Error ? err.message : "Couldn't move — try again.", err: true });
+    }
+  }
+
   async function updateTitle(title: string) {
     const trimmed = title.trim();
     if (!trimmed || trimmed === room.title) return;
@@ -275,6 +305,7 @@ export default function Board({ initialRoom }: { initialRoom: RoomData }) {
             onAddPin={addPin}
             onRemovePin={removePin}
             onUpdateDay={updateDay}
+            onMoveDay={moveDay}
             onDeleteDay={deleteDay}
             canDelete={room.days.length > 1}
             note={note}
@@ -432,6 +463,7 @@ function DayOverlay({
   onAddPin,
   onRemovePin,
   onUpdateDay,
+  onMoveDay,
   onDeleteDay,
   canDelete,
   note,
@@ -452,6 +484,7 @@ function DayOverlay({
   ) => void;
   onRemovePin: (dayId: string, category: Category, pinId: string) => void;
   onUpdateDay: (dayId: string, patch: Partial<Day>) => void;
+  onMoveDay: (dayId: string, toNum: number) => void;
   onDeleteDay: (dayId: string) => void;
   canDelete: boolean;
   note: { text: string; err: boolean } | null;
@@ -524,6 +557,23 @@ function DayOverlay({
           />
         ))}
         <div className={`save-note${note?.err ? " err" : ""}`}>{note?.text ?? ""}</div>
+        {total > 1 && (
+          <div className="day-move-row">
+            <label htmlFor="day-move-select">Move this day to position</label>
+            <select
+              id="day-move-select"
+              className="day-move-select"
+              value={day.num}
+              onChange={(e) => onMoveDay(day.dayId, Number(e.target.value))}
+            >
+              {Array.from({ length: total }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  Day {n}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {canDelete && (
           <div className="day-delete-row">
             <button
